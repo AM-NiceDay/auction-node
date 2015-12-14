@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/AM-NiceDay/auction-node/issues"
   },
-  "homepage": "https://github.com/AM-NiceDay/auction-node#readme"
+  "homepage": "https://github.com/AM-NiceDay/auction-node#readme",
+  "dependencies": {
+    "socket.io": "^1.3.7"
+  }
 }
