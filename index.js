@@ -17,6 +17,11 @@ io.on('connection', function (socket) {
         break;
       }
     }
+
+    if (action.type.indexOf('ROOM') > 0) {
+      socket.broadcast.emit('UPDATE_ROOM', room);
+    }
+
     console.log(room);
   });
 });
