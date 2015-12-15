@@ -16,9 +16,13 @@ io.on('connection', function (socket) {
         room.players.push(action.player);
         break;
       }
+      case 'GET_ROOM': {
+        socket.emit('UPDATE_ROOM', room);
+      }
     }
 
-    if (action.type.indexOf('ROOM') > 0) {
+    if (action.type === 'CREATE_ROOM'
+      || action.type === 'JOIN_ROOM') {
       socket.broadcast.emit('UPDATE_ROOM', room);
     }
 
