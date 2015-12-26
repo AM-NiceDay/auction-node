@@ -24,11 +24,17 @@ io.on('connection', function (socket) {
       }
       case 'START_GAME': {
         game = {
-          players: room.players.slice(),
-          owner: room.owner
+          players: setupPlayers(room.players.slice()),
+          owner: room.owner,
+          things: calculateThings(room.players.length)
         };
 
         socket.broadcast.emit('GAME_STARTED', game);
+        break;
+      }
+      case 'GET_GAME': {
+        socket.emit('UPDATE_GAME', game);
+        break;
       }
     }
 
@@ -41,3 +47,26 @@ io.on('connection', function (socket) {
     console.log(game);
   });
 });
+
+function setupPlayers(players) {
+  var result = [];
+
+  for (var index in players) {
+    result.push({
+      name: players[index],
+      money: 100,
+      things: []
+    });
+  }
+
+  return result;
+}
+
+function calculateThings(numberOfPlayers) {
+  var result = [];
+  for (var i = 0; i < numberOfPlayers; i++) {
+    result.push(i * 2, i * 2 + 1);
+  }
+
+  return result;
+}
