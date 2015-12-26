@@ -4,6 +4,8 @@ var room = {
   players: []
 };
 
+var game = {};
+
 io.on('connection', function (socket) {
   socket.on('action', function(action) {
     switch(action.type) {
@@ -18,6 +20,15 @@ io.on('connection', function (socket) {
       }
       case 'GET_ROOM': {
         socket.emit('UPDATE_ROOM', room);
+        break;
+      }
+      case 'START_GAME': {
+        game = {
+          players: room.players.slice(),
+          owner: room.owner
+        };
+
+        socket.broadcast.emit('GAME_STARTED', game);
       }
     }
 
@@ -27,5 +38,6 @@ io.on('connection', function (socket) {
     }
 
     console.log(room);
+    console.log(game);
   });
 });
