@@ -1,4 +1,13 @@
 var io = require('socket.io')(8000);
+var mongoose = require('mongoose');
+
+mongoose.connect('localhost:27017/auction');
+
+var UserSchema = mongoose.Schema({
+  name: String
+});
+
+var User = mongoose.model('User', UserSchema);
 
 var room = {
   players: []
@@ -10,6 +19,13 @@ io.on('connection', function (socket) {
   socket.on('action', function(action) {
     switch(action.type) {
       case 'CREATE_ROOM': {
+        User.create({
+          name: action.owner
+        })
+          .then(function(user) {
+            socket.emit('UPDATE_USER', user);
+          });
+
         room.owner = action.owner;
         room.players = [];
         break;
