@@ -18,6 +18,27 @@ var game = {};
 io.on('connection', function (socket) {
   socket.on('action', function(action) {
     switch(action.type) {
+      case 'CREATE_USER': {
+        User.findOne({
+          name: action.name
+        })
+          .then(function(user) {
+            if (!user) {
+              return User.create({
+                name: action.name
+              });
+            }
+
+            return user;
+          })
+          .then(function(user) {
+            socket.emit('UPDATE_USER', {
+              id: user._id,
+              name: user.name
+            });
+          });
+        break;
+      }
       case 'CREATE_ROOM': {
         User.create({
           name: action.owner
