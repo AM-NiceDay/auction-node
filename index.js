@@ -1,5 +1,8 @@
+'use strict';
+
 var io = require('socket.io')(8000);
 var mongoose = require('mongoose');
+var _ = require('lodash');
 
 mongoose.connect('localhost:27017/auction');
 
@@ -16,11 +19,13 @@ var RoomSchema = mongoose.Schema({
 
 var Room = mongoose.model('Room', RoomSchema);
 
-var room = {
-  players: []
-};
+var GameSchema = mongoose.Schema({
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  players: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  playersStats: mongoose.Schema.Types.Mixed
+});
 
-var game = {};
+var Game = mongoose.model('Game', GameSchema);
 
 io.on('connection', function (socket) {
   socket.on('action', function(action) {
@@ -79,14 +84,32 @@ io.on('connection', function (socket) {
           });
       }
       case 'START_GAME': {
-        game = {
-          players: setupPlayers(room.players.slice()),
-          owner: room.owner,
-          things: calculateThings(room.players.length)
-        };
+        return Room.findOne(action.roomId)
+          .populate('owner players')
+          .exec()
+          .then(function(room) {
+            var playersStats = _.chain(room.players)
+              .map(function(player) {
+                return {
+                  id: player._id,
+                  name: player.name,
+                  money: 100,
+                  things: []
+                };
+              })
+                .indexBy('id')
+                .value();
 
-        socket.broadcast.emit('GAME_STARTED', game);
-        break;
+            return Game.create({
+              owner: room.owner,
+              players: room.players,
+              playersStats: playersStats
+            });
+          })
+          .then(function(game) {
+            socket.emit('GAME_STARTED', game._id);
+            socket.broadcast.emit('GAME_STARTED', game._id);
+          });
       }
       case 'GET_GAME': {
         socket.emit('UPDATE_GAME', game);
@@ -103,26 +126,3 @@ io.on('connection', function (socket) {
     console.log(game);
   });
 });
-
-function setupPlayers(players) {
-  var result = [];
-
-  for (var index in players) {
-    result.push({
-      name: players[index],
-      money: 100,
-      things: []
-    });
-  }
-
-  return result;
-}
-
-function calculateThings(numberOfPlayers) {
-  var result = [];
-  for (var i = 0; i < numberOfPlayers; i++) {
-    result.push(i * 2, i * 2 + 1);
-  }
-
-  return result;
-}
