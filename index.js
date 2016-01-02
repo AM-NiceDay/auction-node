@@ -120,10 +120,5 @@ io.on('connection', function (socket) {
           });
       }
     }
-
-    if (action.type === 'CREATE_ROOM'
-      || action.type === 'JOIN_ROOM') {
-      socket.broadcast.emit('UPDATE_ROOM', room);
-    }
   });
 });
