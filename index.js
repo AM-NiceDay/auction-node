@@ -112,8 +112,12 @@ io.on('connection', function (socket) {
           });
       }
       case 'GET_GAME': {
-        socket.emit('UPDATE_GAME', game);
-        break;
+        return Game.findOne(action.gameId)
+          .populate('owner players')
+          .exec()
+          .then(function(game) {
+            socket.emit('UPDATE_GAME', game);
+          });
       }
     }
 
@@ -121,8 +125,5 @@ io.on('connection', function (socket) {
       || action.type === 'JOIN_ROOM') {
       socket.broadcast.emit('UPDATE_ROOM', room);
     }
-
-    console.log(room);
-    console.log(game);
   });
 });
