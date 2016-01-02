@@ -64,8 +64,15 @@ io.on('connection', function (socket) {
             room.players.push(action.player.id);
             return room.save();
           })
-          .then(function() {
+          .then(function(room) {
+            return room
+              .populate('owner players')
+              .execPopulate();
+          })
+          .then(function(room) {
+            console.log(room);
             socket.emit('ROOM_JOINED');
+            socket.broadcast.emit('UPDATE_ROOM', room);
           });
       }
       case 'GET_ROOM': {
