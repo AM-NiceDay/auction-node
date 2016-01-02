@@ -109,6 +109,9 @@ io.on('connection', function (socket) {
           .then(function(game) {
             socket.emit('GAME_STARTED', game._id);
             socket.broadcast.emit('GAME_STARTED', game._id);
+          })
+          .then(function() {
+            return Room.remove({ _id: action.roomId });
           });
       }
       case 'GET_GAME': {
@@ -117,6 +120,13 @@ io.on('connection', function (socket) {
           .exec()
           .then(function(game) {
             socket.emit('UPDATE_GAME', game);
+          });
+      }
+      case 'REMOVE_GAME': {
+        return Game.remove(action.gameId)
+          .then(function() {
+            socket.emit('GAME_REMOVED');
+            socket.broadcast.emit('GAME_REMOVED');
           });
       }
     }
