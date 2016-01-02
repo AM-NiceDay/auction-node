@@ -9,6 +9,13 @@ var UserSchema = mongoose.Schema({
 
 var User = mongoose.model('User', UserSchema);
 
+var RoomSchema = mongoose.Schema({
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  players: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+});
+
+var Room = mongoose.model('Room', RoomSchema);
+
 var room = {
   players: []
 };
@@ -19,7 +26,7 @@ io.on('connection', function (socket) {
   socket.on('action', function(action) {
     switch(action.type) {
       case 'CREATE_USER': {
-        User.findOne({
+        return User.findOne({
           name: action.name
         })
           .then(function(user) {
@@ -37,27 +44,32 @@ io.on('connection', function (socket) {
               name: user.name
             });
           });
-        break;
       }
       case 'CREATE_ROOM': {
-        User.create({
-          name: action.owner
+        return Room.create({
+          owner: action.owner.id
         })
-          .then(function(user) {
-            socket.emit('UPDATE_USER', user);
+          .then(function(room) {
+            socket.emit('ROOM_CREATED', room.id);
           });
-
-        room.owner = action.owner;
-        room.players = [];
-        break;
       }
       case 'JOIN_ROOM': {
         room.players.push(action.player);
         break;
       }
       case 'GET_ROOM': {
-        socket.emit('UPDATE_ROOM', room);
-        break;
+        return Room.findOne(action.roomId)
+          .populate('owner players')
+          .exec()
+          .then(function(room) {
+            socket.emit('UPDATE_ROOM', room);
+          });
+      }
+      case 'GET_ROOMS': {
+        return Room.find()
+          .then(function(rooms) {
+            socket.emit('UPDATE_ROOMS', rooms);
+          });
       }
       case 'START_GAME': {
         game = {
