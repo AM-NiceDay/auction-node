@@ -54,8 +54,14 @@ io.on('connection', function (socket) {
           });
       }
       case 'JOIN_ROOM': {
-        room.players.push(action.player);
-        break;
+        return Room.findOne(action.roomId)
+          .then(function(room) {
+            room.players.push(action.player.id);
+            return room.save();
+          })
+          .then(function() {
+            socket.emit('ROOM_JOINED');
+          });
       }
       case 'GET_ROOM': {
         return Room.findOne(action.roomId)
@@ -67,6 +73,7 @@ io.on('connection', function (socket) {
       }
       case 'GET_ROOMS': {
         return Room.find()
+          .populate('owner')
           .then(function(rooms) {
             socket.emit('UPDATE_ROOMS', rooms);
           });
