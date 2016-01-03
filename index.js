@@ -132,7 +132,7 @@ io.on('connection', function (socket) {
       }
       case 'GET_GAME': {
         return Game.findOne(action.gameId)
-          .populate('owner players')
+          .populate('owner players winner')
           .exec()
           .then(function(game) {
             socket.emit('UPDATE_GAME', game);
@@ -147,7 +147,7 @@ io.on('connection', function (socket) {
       }
       case 'NEXT_TICK': {
         return Game.findOne(action.gameId)
-          .populate('owner players')
+          .populate('owner players winner')
           .exec()
           .then(function(game) {
             var currentPrice = game.currentPrice;
