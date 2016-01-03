@@ -124,7 +124,6 @@ io.on('connection', function (socket) {
           .then(function(game) {
             socket.emit('GAME_STARTED', game._id);
             socket.broadcast.emit('GAME_STARTED', game._id);
-            game(socket, game, Game);
           })
           .then(function() {
             return Room.remove({ _id: action.roomId });
@@ -157,6 +156,42 @@ io.on('connection', function (socket) {
             if (nextPrice > 0) {
               game.currentPrice = nextPrice;
             } else if (game.things.length > 0) {
+              game.currentThing = game.things[0];
+              game.things = game.things.slice(1);
+              game.currentPrice = 100;
+            } else {
+              game.isOver = true;
+              game.winner = game.players[0];
+              game.currentThing = '';
+              game.currentPrice = 0;
+            }
+
+            return game;
+          })
+          .then(function(game) {
+            return game.save();
+          })
+          .then(function(game) {
+            socket.emit('UPDATE_GAME', game);
+            socket.broadcast.emit('UPDATE_GAME', game);
+          });
+      }
+      case 'BUY_THING': {
+        return Game.findOne(action.gameId)
+          .populate('owner players winner')
+          .exec()
+          .then(function(game) {
+            var playerStats = game.playersStats[action.playerId];
+
+            if (playerStats.money < game.currentPrice) {
+              return game;
+            }
+
+            game.playersStats[action.playerId].things.push(game.currentThing);
+            game.playersStats[action.playerId].money -= game.currentPrice;
+            game.markModified('playersStats');
+
+            if (game.things.length > 0) {
               game.currentThing = game.things[0];
               game.things = game.things.slice(1);
               game.currentPrice = 100;
