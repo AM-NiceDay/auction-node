@@ -22,7 +22,8 @@ var Room = mongoose.model('Room', RoomSchema);
 var GameSchema = mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   players: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  playersStats: mongoose.Schema.Types.Mixed
+  playersStats: mongoose.Schema.Types.Mixed,
+  things: [String]
 });
 
 var Game = mongoose.model('Game', GameSchema);
@@ -110,7 +111,8 @@ io.on('connection', function (socket) {
             return Game.create({
               owner: room.owner,
               players: room.players,
-              playersStats: playersStats
+              playersStats: playersStats,
+              things: generateThings(room.players.length * 2)
             });
           })
           .then(function(game) {
@@ -139,3 +141,9 @@ io.on('connection', function (socket) {
     }
   });
 });
+
+function generateThings(amount) {
+  var things = ['🎩', '🚙', '🚔', '⛴', '✈️', '🏠', '🚞', '🚝', '☂', '💼', '🕶', '👔', '🎓'];
+
+  return things.slice(0, amount);
+}
