@@ -25,7 +25,9 @@ var GameSchema = mongoose.Schema({
   playersStats: mongoose.Schema.Types.Mixed,
   things: [String],
   currentThing: String,
-  currentPrice: Number
+  currentPrice: Number,
+  isOver: { type: Boolean, default: false },
+  winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 });
 
 var Game = mongoose.model('Game', GameSchema);
@@ -73,7 +75,6 @@ io.on('connection', function (socket) {
               .execPopulate();
           })
           .then(function(room) {
-            console.log(room);
             socket.emit('ROOM_JOINED');
             socket.broadcast.emit('UPDATE_ROOM', room);
           });
@@ -142,6 +143,38 @@ io.on('connection', function (socket) {
           .then(function() {
             socket.emit('GAME_REMOVED');
             socket.broadcast.emit('GAME_REMOVED');
+          });
+      }
+      case 'NEXT_TICK': {
+        return Game.findOne(action.gameId)
+          .populate('owner players')
+          .exec()
+          .then(function(game) {
+            var currentPrice = game.currentPrice;
+            var difference = Math.floor(Math.random() * (10)) + 1;
+            var nextPrice = currentPrice - difference;
+
+            if (nextPrice > 0) {
+              game.currentPrice = nextPrice;
+            } else if (game.things.length > 0) {
+              game.currentThing = game.things[0];
+              game.things = game.things.slice(1);
+              game.currentPrice = 100;
+            } else {
+              game.isOver = true;
+              game.winner = game.players[0];
+              game.currentThing = '';
+              game.currentPrice = 0;
+            }
+
+            return game;
+          })
+          .then(function(game) {
+            return game.save();
+          })
+          .then(function(game) {
+            socket.emit('UPDATE_GAME', game);
+            socket.broadcast.emit('UPDATE_GAME', game);
           });
       }
     }
