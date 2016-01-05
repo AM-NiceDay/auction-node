@@ -23,11 +23,17 @@ var GameSchema = mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   players: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   playersStats: mongoose.Schema.Types.Mixed,
+  playersPoints: mongoose.Schema.Types.Mixed,
   things: [String],
   currentThing: String,
   currentPrice: Number,
   isOver: { type: Boolean, default: false },
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+});
+
+GameSchema.pre('save', function(next) {
+  this.playersPoints = calculatePlayersPoints(this.playersStats);
+  next();
 });
 
 var Game = mongoose.model('Game', GameSchema);
@@ -220,4 +226,19 @@ function generateThings(amount) {
   var things = ['🎩', '🚙', '🚔', '⛴', '✈️', '🏠', '🚞', '🚝', '☂', '💼', '🕶', '👔', '🎓'];
 
   return things.slice(0, amount);
+}
+
+function calculatePlayersPoints(playersStats) {
+  return _.mapValues(playersStats, function(playerStats) {
+    return playerStats.things.length * 35 + calculateSigma(playerStats.things.length * 5, 0) + playerStats.money;
+  });
+}
+
+function calculateSigma(n, acc) {
+  if (n > 0) {
+    var newAcc = acc + n;
+    return calculateSigma(n - 1, newAcc);
+  }
+
+  return acc;
 }
