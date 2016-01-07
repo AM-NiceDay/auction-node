@@ -1,6 +1,8 @@
 'use strict';
 
-var io = require('socket.io')(8000);
+var port = process.env.PORT || 8000;
+var io = require('socket.io')(port);
+console.log('Running on port ' + port);
 var mongoose = require('mongoose');
 var _ = require('lodash');
 
@@ -39,6 +41,8 @@ GameSchema.pre('save', function(next) {
 var Game = mongoose.model('Game', GameSchema);
 
 io.on('connection', function (socket) {
+  console.log('host connected');
+
   socket.on('action', function(action) {
     switch(action.type) {
       case 'CREATE_USER': {
