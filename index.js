@@ -8,6 +8,11 @@ var _ = require('lodash');
 
 mongoose.connect('localhost:27017/auction');
 
+var MessageQueue = require('mongoose-pubsub');
+var messenger = new MessageQueue();
+messenger.subscribe('UPDATE_ROOM', true);
+messenger.subscribe('UPDATE_GAME', true);
+
 var UserSchema = mongoose.Schema({
   name: String
 });
@@ -44,8 +49,7 @@ GameSchema.pre('save', function(next) {
 var Game = mongoose.model('Game', GameSchema);
 
 io.on('connection', function (socket) {
-  console.log('host connected');
-
+  console.log('New host');
   socket.on('action', function(action) {
     switch(action.type) {
       case 'CREATE_USER': {
@@ -90,6 +94,7 @@ io.on('connection', function (socket) {
           .then(function(room) {
             socket.emit('ROOM_JOINED');
             socket.broadcast.emit('UPDATE_ROOM', room);
+            messenger.send('UPDATE_ROOM', action);
           });
       }
       case 'GET_ROOM': {
@@ -140,6 +145,10 @@ io.on('connection', function (socket) {
           .then(function(game) {
             socket.emit('GAME_STARTED', action.roomId, game._id);
             socket.broadcast.emit('GAME_STARTED', action.roomId, game._id);
+            messenger.send('GAME_STARTED', {
+              roomId: action.roomId,
+              gameId: game._id
+            });
           })
           .then(function() {
             return Room.remove({ _id: action.roomId });
@@ -158,6 +167,7 @@ io.on('connection', function (socket) {
           .then(function() {
             socket.emit('GAME_REMOVED', action.gameId);
             socket.broadcast.emit('GAME_REMOVED', action.gameId);
+            messenger.send('GAME_REMOVED', action);
           });
       }
       case 'NEXT_TICK': {
@@ -195,6 +205,7 @@ io.on('connection', function (socket) {
           .then(function(game) {
             socket.emit('UPDATE_GAME', game);
             socket.broadcast.emit('UPDATE_GAME', game);
+            messenger.send('UPDATE_GAME', action);
           });
       }
       case 'BUY_THING': {
@@ -241,6 +252,7 @@ io.on('connection', function (socket) {
           .then(function(game) {
             socket.emit('UPDATE_GAME', game);
             socket.broadcast.emit('UPDATE_GAME', game);
+            messenger.send('UPDATE_GAME', action);
           });
       }
       case 'BUY_JOKER': {
@@ -268,6 +280,7 @@ io.on('connection', function (socket) {
           .then(function(game) {
             socket.emit('UPDATE_GAME', game);
             socket.broadcast.emit('UPDATE_GAME', game);
+            messenger.send('UPDATE_GAME', action);
           });
       }
       case 'GET_CURRENT_WINNER': {
@@ -280,6 +293,31 @@ io.on('connection', function (socket) {
           });
       }
     }
+  });
+
+  messenger.connect(function() {
+    messenger.on('UPDATE_ROOM', function(action) {
+      Room.findOne({ _id: action.roomId })
+        .populate('owner players')
+        .exec()
+        .then(function(room) {
+          socket.emit('UPDATE_ROOM', room);
+        });
+    });
+    messenger.on('UPDATE_GAME', function(action) {
+      Game.findOne({ _id: action.gameId })
+        .populate('owner players winner')
+        .exec()
+        .then(function(game) {
+          socket.emit('UPDATE_GAME', game);
+        });
+    });
+    messenger.on('GAME_STARTED', function(action) {
+      socket.emit('GAME_STARTED', action.roomId, action.gameId);
+    });
+    messenger.on('GAME_REMOVED', function(action) {
+      socket.emit('GAME_REMOVED', action.gameId);
+    });
   });
 });
 
