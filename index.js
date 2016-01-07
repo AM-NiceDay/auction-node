@@ -30,7 +30,10 @@ var GameSchema = mongoose.Schema({
   currentThing: String,
   currentPrice: Number,
   isOver: { type: Boolean, default: false },
-  winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  joker: Number,
+  jokerUsed: Boolean,
+  difference: Number
 });
 
 GameSchema.pre('save', function(next) {
@@ -128,11 +131,13 @@ io.on('connection', function (socket) {
               playersStats: playersStats,
               currentThing: things[0],
               things: things.slice(1),
-              currentPrice: 100
+              currentPrice: 100,
+              joker: Math.floor(Math.random() * (10)) + 1,
+              jokerUsed: false,
+              difference: 0
             });
           })
           .then(function(game) {
-            console.log(game._id);
             socket.emit('GAME_STARTED', action.roomId, game._id);
             socket.broadcast.emit('GAME_STARTED', action.roomId, game._id);
           })
@@ -166,10 +171,15 @@ io.on('connection', function (socket) {
 
             if (nextPrice > 0) {
               game.currentPrice = nextPrice;
+              game.difference = difference;
             } else if (game.things.length > 0) {
               game.currentThing = game.things[0];
               game.things = game.things.slice(1);
               game.currentPrice = 100;
+              if (game.jokerUsed == true) {
+                game.joker = Math.floor(Math.random() * (10)) + 1;
+                game.jokerUsed = false;
+              }
             } else {
               game.isOver = true;
               game.winner = calculateWinner(game.players, game.playersPoints);
@@ -194,24 +204,61 @@ io.on('connection', function (socket) {
           .then(function(game) {
             var playerStats = game.playersStats[action.playerId];
 
-            if (playerStats.money < game.currentPrice) {
+            var isJoker = game.joker == game.difference;
+            if (isJoker) {
+              game.jokerUsed = true;
+            }
+            var totalPrice = isJoker ? 0 : game.currentPrice;
+
+            if (playerStats.money < totalPrice) {
               return game;
             }
 
             game.playersStats[action.playerId].things.push(game.currentThing);
-            game.playersStats[action.playerId].money -= game.currentPrice;
+            game.playersStats[action.playerId].money -= totalPrice;
             game.markModified('playersStats');
 
             if (game.things.length > 0) {
               game.currentThing = game.things[0];
               game.things = game.things.slice(1);
               game.currentPrice = 100;
+              if (game.jokerUsed == true) {
+                game.joker = Math.floor(Math.random() * (10)) + 1;
+                game.jokerUsed = false;
+              }
             } else {
               game.isOver = true;
               game.winner = calculateWinner(game.players, game.playersPoints);
               game.currentThing = '';
               game.currentPrice = 0;
             }
+
+            return game;
+          })
+          .then(function(game) {
+            return game.save();
+          })
+          .then(function(game) {
+            socket.emit('UPDATE_GAME', game);
+            socket.broadcast.emit('UPDATE_GAME', game);
+          });
+      }
+      case 'BUY_JOKER': {
+        return Game.findOne({ _id: action.gameId })
+          .populate('owner players winner')
+          .exec()
+          .then(function(game) {
+            var playerStats = game.playersStats[action.playerId];
+
+            if (playerStats.money < 30) {
+              return game;
+            }
+
+            game.playersStats[action.playerId].money -= 30;
+            game.joker = action.joker;
+            game.jokerUsed = false;
+
+            game.markModified('playersStats');
 
             return game;
           })
