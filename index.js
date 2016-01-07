@@ -167,7 +167,7 @@ io.on('connection', function (socket) {
               game.currentPrice = 100;
             } else {
               game.isOver = true;
-              game.winner = game.players[0];
+              game.winner = calculateWinner(game.players, game.playersPoints);
               game.currentThing = '';
               game.currentPrice = 0;
             }
@@ -203,7 +203,7 @@ io.on('connection', function (socket) {
               game.currentPrice = 100;
             } else {
               game.isOver = true;
-              game.winner = game.players[0];
+              game.winner = calculateWinner(game.players, game.playersPoints);
               game.currentThing = '';
               game.currentPrice = 0;
             }
@@ -218,6 +218,15 @@ io.on('connection', function (socket) {
             socket.broadcast.emit('UPDATE_GAME', game);
           });
       }
+      case 'GET_CURRENT_WINNER': {
+        Game.findOne(action.gameId)
+          .populate('owner players winner')
+          .exec()
+          .then(function(game) {
+            socket.emit('UPDATE_GAME', socket.emit('UPDATE_CURRENT_WINNER',
+              calculateWinner(game.players, game.playersPoints)));
+          });
+      }
     }
   });
 });
@@ -226,6 +235,23 @@ function generateThings(amount) {
   var things = ['🎩', '🚙', '🚔', '⛴', '✈️', '🏠', '🚞', '🚝', '☂', '💼', '🕶', '👔', '🎓'];
 
   return things.slice(0, amount);
+}
+
+function calculateWinner(players, playersPoints) {
+  var winnerValue = _.chain(playersPoints).values().max().value();
+  var winnerId;
+  for (var key in playersPoints) {
+    if (playersPoints[key] === winnerValue) {
+      winnerId = key;
+      break;
+    }
+  }
+
+  var winnerIndex = _.findIndex(players, function(player) {
+    return player._id == winnerId;
+  });
+
+  return players[winnerIndex];
 }
 
 function calculatePlayersPoints(playersStats) {
