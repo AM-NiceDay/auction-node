@@ -70,7 +70,7 @@ io.on('connection', function (socket) {
           });
       }
       case 'JOIN_ROOM': {
-        return Room.findOne(action.roomId)
+        return Room.findOne({ _id: action.roomId })
           .then(function(room) {
             room.players.push(action.player.id);
             return room.save();
@@ -86,7 +86,7 @@ io.on('connection', function (socket) {
           });
       }
       case 'GET_ROOM': {
-        return Room.findOne(action.roomId)
+        return Room.findOne({ _id: action.roomId })
           .populate('owner players')
           .exec()
           .then(function(room) {
@@ -101,7 +101,7 @@ io.on('connection', function (socket) {
           });
       }
       case 'START_GAME': {
-        return Room.findOne(action.roomId)
+        return Room.findOne({ _id: action.roomId })
           .populate('owner players')
           .exec()
           .then(function(room) {
@@ -128,15 +128,16 @@ io.on('connection', function (socket) {
             });
           })
           .then(function(game) {
-            socket.emit('GAME_STARTED', game._id);
-            socket.broadcast.emit('GAME_STARTED', game._id);
+            console.log(game._id);
+            socket.emit('GAME_STARTED', action.roomId, game._id);
+            socket.broadcast.emit('GAME_STARTED', action.roomId, game._id);
           })
           .then(function() {
             return Room.remove({ _id: action.roomId });
           });
       }
       case 'GET_GAME': {
-        return Game.findOne(action.gameId)
+        return Game.findOne({ _id: action.gameId })
           .populate('owner players winner')
           .exec()
           .then(function(game) {
@@ -144,14 +145,14 @@ io.on('connection', function (socket) {
           });
       }
       case 'REMOVE_GAME': {
-        return Game.remove(action.gameId)
+        return Game.remove({ _id: action.gameId })
           .then(function() {
-            socket.emit('GAME_REMOVED');
-            socket.broadcast.emit('GAME_REMOVED');
+            socket.emit('GAME_REMOVED', action.gameId);
+            socket.broadcast.emit('GAME_REMOVED', action.gameId);
           });
       }
       case 'NEXT_TICK': {
-        return Game.findOne(action.gameId)
+        return Game.findOne({ _id: action.gameId })
           .populate('owner players winner')
           .exec()
           .then(function(game) {
@@ -183,7 +184,7 @@ io.on('connection', function (socket) {
           });
       }
       case 'BUY_THING': {
-        return Game.findOne(action.gameId)
+        return Game.findOne({ _id: action.gameId })
           .populate('owner players winner')
           .exec()
           .then(function(game) {
@@ -219,7 +220,7 @@ io.on('connection', function (socket) {
           });
       }
       case 'GET_CURRENT_WINNER': {
-        Game.findOne(action.gameId)
+        Game.findOne({ _id: action.gameId })
           .populate('owner players winner')
           .exec()
           .then(function(game) {
